@@ -8,8 +8,7 @@ TOKEN = ''
 with open('.TOKEN','r') as fin: TOKEN = fin.readline().strip()
 
 class DNDClient(discord.Client):
-
-    RollingPattern = re.compile('(\d*d\d+[-\+]?([-\+]\d+)?)')
+    RollingPattern = re.compile('(((\d*)d(\d+))([-\+](?!\d))?([-\+]\d+)?)')
 
     def __init__(self, *args, **kwargs):
         discord.Client.__init__(self, *args, **kwargs)
@@ -19,20 +18,20 @@ class DNDClient(discord.Client):
         content = message.content.strip()
         if self.isARoll(content):
             await self.handleRoll(content, message.channel)
-        
-    
+
+
     async def handleRoll(self, content, channel):
-        rolls = self.roll(r[0] for r in re.findall(self.RollingPattern, content))
+        rolls = self.roll(re.findall(self.RollingPattern, content))
 
         leftColSize = max(map(len, [str(v) for v in rolls.keys()]))
         response = '\n'.join(['{}: {}'.format(k.ljust(leftColSize), ', '.join(map(str, v))) for k,v in sorted(rolls.items())])
         response = '```\n{}```'.format(response)
         await self.send_message(channel, response)
-        
+
 
     @classmethod
     def isARoll(cls, s):
-        for roll in re.split('\W*', s):
+        for roll in s.split():
             if not re.match(cls.RollingPattern, roll): return False
         return True
 
@@ -40,22 +39,25 @@ class DNDClient(discord.Client):
     def roll(cls, rolls):
         ret = defaultdict(list)
         for roll in rolls:
-            n, d = roll.split('d')
+            _, _, n, d, advantage, mod = roll
             if n == '': n = 1
-            advantage = 0
-            if '+' in d: advantage = 1
-            elif '-' in d: advantage = -1
-            
-            die = int(d[:-1] if advantage != 0 else d)
-            for _ in range(int(n)):
-                result = random.randint(1, die)
+            else: n = int(n)
+
+            d = int(d)
+
+            if '+' == advantage: advantage = 1
+            elif '-' == advantage: advantage = -1
+            else: advantage = 0
+
+            mod = int(mod) if mod != '' else 0
+
+            for _ in range(n):
+                result = random.randint(1, d)
                 if advantage == 1:
-                    result = max(result, random.randint(1, die))
+                    result = max(result, random.randint(1, d))
                 elif advantage == -1:
-                    result = min(result, random.randint(1, die))
-                ret['d' + d].append(result)
+                    result = min(result, random.randint(1, d))
+                ret[f'd{d}'].append(result + mod)
         return ret
 
-        
-        
 client = DNDClient()
