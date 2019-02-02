@@ -21,11 +21,11 @@ class DNDClient(discord.Client):
 
 
     async def handleRoll(self, content, channel):
-        rolls = self.roll(re.findall(self.RollingPattern, content))
+        rolls, total = self.roll(re.findall(self.RollingPattern, content))
 
         leftColSize = max(map(len, [str(v) for v in rolls.keys()]))
         response = '\n'.join(['{}: {}'.format(k.ljust(leftColSize), ', '.join(map(str, v))) for k,v in sorted(rolls.items())])
-        response = '```\n{}```'.format(response)
+        response = '```\n{}\nTotal: {}```'.format(response, total)
         await self.send_message(channel, response)
 
 
@@ -58,6 +58,7 @@ class DNDClient(discord.Client):
                 elif advantage == -1:
                     result = min(result, random.randint(1, d))
                 ret[f'd{d}'].append(result + mod)
-        return ret
+        total = sum(sum(v) for v in ret.values())
+        return ret, total
 
 client = DNDClient()
